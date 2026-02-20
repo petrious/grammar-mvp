@@ -15,23 +15,25 @@
   let textImprovementEnabled = true;
   let fluentifyEnabled = true;
   let explainEnabled = true;
-  let siteDisabled = false;
+  let disabledFeaturesForSite = [];
   const currentHostname = window.location.hostname;
 
   function loadSettings() {
-    chrome.storage.sync.get(['textImprovementEnabled', 'fluentifyEnabled', 'explainEnabled', 'disabledSites'], (data) => {
+    chrome.storage.sync.get(['textImprovementEnabled', 'fluentifyEnabled', 'explainEnabled', 'disabledFeatures'], (data) => {
       textImprovementEnabled = data.textImprovementEnabled !== false;
       fluentifyEnabled = data.fluentifyEnabled !== false;
       explainEnabled = data.explainEnabled !== false;
-      siteDisabled = (data.disabledSites || []).includes(currentHostname);
-      if ((siteDisabled || !textImprovementEnabled) && activeTooltip) { removeTooltip(); }
-      if (siteDisabled || !explainEnabled) { removeExplain(); }
+      const disabledFeatures = data.disabledFeatures || {};
+      disabledFeaturesForSite = disabledFeatures[currentHostname] || [];
+
+      if (disabledFeaturesForSite.includes('textImprovement') && activeTooltip) { removeTooltip(); }
+      if (disabledFeaturesForSite.includes('explain')) { removeExplain(); }
     });
   }
 
   loadSettings();
 
-  // Reload settings when changed (no need to refresh Slack)
+  // Reload settings when changed (no need to refresh page)
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.textImprovementEnabled) textImprovementEnabled = changes.textImprovementEnabled.newValue !== false;
     if (changes.fluentifyEnabled) fluentifyEnabled = changes.fluentifyEnabled.newValue !== false;
@@ -39,13 +41,11 @@
       explainEnabled = changes.explainEnabled.newValue !== false;
       if (!explainEnabled) removeExplain();
     }
-    if (changes.disabledSites) {
-      siteDisabled = (changes.disabledSites.newValue || []).includes(currentHostname);
-      if (siteDisabled) { removeTooltip(); removeCheckIcon(); removeExplain(); }
-    }
-    if ((changes.textImprovementEnabled && !changes.textImprovementEnabled.newValue) ||
-        (changes.disabledSites && (changes.disabledSites.newValue || []).includes(currentHostname))) {
-      removeTooltip();
+    if (changes.disabledFeatures) {
+      const disabledFeatures = changes.disabledFeatures.newValue || {};
+      disabledFeaturesForSite = disabledFeatures[currentHostname] || [];
+      if (disabledFeaturesForSite.includes('textImprovement')) { removeTooltip(); removeCheckIcon(); }
+      if (disabledFeaturesForSite.includes('explain')) { removeExplain(); }
     }
   });
 
@@ -282,7 +282,7 @@
   // --- Core check ---
 
   function scheduleCheck(inputEl, immediate = false) {
-    if (!textImprovementEnabled || siteDisabled) return;
+    if (!textImprovementEnabled || disabledFeaturesForSite.includes('textImprovement')) return;
     if (debounceTimer) clearTimeout(debounceTimer);
 
     if (Date.now() < suppressUntil) return;
@@ -427,7 +427,9 @@
   }
 
   function updateCheckIcon(inputEl) {
-    if (!textImprovementEnabled || !fluentifyEnabled || siteDisabled) return;
+    if (!textImprovementEnabled || !fluentifyEnabled ||
+        disabledFeaturesForSite.includes('textImprovement') ||
+        disabledFeaturesForSite.includes('fluentify')) return;
     const text = getInputText(inputEl);
     if (text.length >= MIN_LENGTH && text !== lastCheckedText) {
       showCheckIcon(inputEl);
@@ -623,7 +625,7 @@
   }
 
   document.addEventListener('mouseup', () => {
-    if (!explainEnabled || siteDisabled) return;
+    if (!explainEnabled || disabledFeaturesForSite.includes('explain')) return;
 
     setTimeout(() => {
       const sel = window.getSelection();

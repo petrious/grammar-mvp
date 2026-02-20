@@ -1,44 +1,71 @@
+let currentHostname = null;
+
 chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
   const siteNameEl = document.getElementById('siteName');
-  const siteToggle = document.getElementById('siteToggle');
+  const toggleTextImprovement = document.getElementById('toggleTextImprovement');
+  const toggleFluentify = document.getElementById('toggleFluentify');
+  const toggleExplain = document.getElementById('toggleExplain');
 
+  // Get hostname
   if (!tab?.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
     siteNameEl.textContent = 'N/A (system page)';
-    siteToggle.disabled = true;
+    toggleTextImprovement.disabled = true;
+    toggleFluentify.disabled = true;
+    toggleExplain.disabled = true;
     return;
   }
 
-  let hostname;
   try {
-    hostname = new URL(tab.url).hostname;
-  } catch {
+    currentHostname = new URL(tab.url).hostname;
+    siteNameEl.textContent = currentHostname;
+  } catch (e) {
     siteNameEl.textContent = 'Unknown site';
-    siteToggle.disabled = true;
+    toggleTextImprovement.disabled = true;
+    toggleFluentify.disabled = true;
+    toggleExplain.disabled = true;
     return;
   }
 
-  siteNameEl.textContent = hostname;
+  // Load disabled features for this site
+  chrome.storage.sync.get(['disabledFeatures'], (data) => {
+    const disabledFeatures = data.disabledFeatures || {};
+    const disabledForSite = disabledFeatures[currentHostname] || [];
 
-  chrome.storage.sync.get(['disabledSites'], (data) => {
-    const disabledSites = data.disabledSites || [];
-    siteToggle.checked = !disabledSites.includes(hostname);
-  });
+    toggleTextImprovement.checked = !disabledForSite.includes('textImprovement');
+    toggleFluentify.checked = !disabledForSite.includes('fluentify');
+    toggleExplain.checked = !disabledForSite.includes('explain');
 
-  siteToggle.addEventListener('change', () => {
-    chrome.storage.sync.get(['disabledSites'], (data) => {
-      let disabledSites = data.disabledSites || [];
-      if (siteToggle.checked) {
-        disabledSites = disabledSites.filter(s => s !== hostname);
-      } else {
-        if (!disabledSites.includes(hostname)) {
-          disabledSites.push(hostname);
-        }
-      }
-      chrome.storage.sync.set({ disabledSites });
-    });
+    // Attach event listeners
+    attachToggleListener(toggleTextImprovement, 'textImprovement', disabledFeatures);
+    attachToggleListener(toggleFluentify, 'fluentify', disabledFeatures);
+    attachToggleListener(toggleExplain, 'explain', disabledFeatures);
   });
 });
+
+function attachToggleListener(toggleEl, featureName, disabledFeatures) {
+  toggleEl.addEventListener('change', () => {
+    // Rebuild disabled features for this site
+    let disabledForSite = disabledFeatures[currentHostname] || [];
+
+    if (!toggleEl.checked) {
+      // Feature is being disabled — add to list
+      if (!disabledForSite.includes(featureName)) {
+        disabledForSite.push(featureName);
+      }
+    } else {
+      // Feature is being enabled — remove from list
+      disabledForSite = disabledForSite.filter(f => f !== featureName);
+    }
+
+    // Update disabledFeatures
+    disabledFeatures[currentHostname] = disabledForSite;
+    chrome.storage.sync.set({ disabledFeatures }, () => {
+      console.log(`Updated ${featureName} for ${currentHostname}`);
+    });
+  });
+}
 
 document.getElementById('openSettings').addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
+
