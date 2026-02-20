@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fluent — Settings</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 480px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+    }
+    h1 {
+      font-size: 22px;
+      color: #4ecca3;
+      margin-bottom: 4px;
+    }
+    p.subtitle {
+      color: #888;
+      margin-top: 0;
+      font-size: 14px;
+    }
+    label {
+      display: block;
+      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #16213e;
+      color: #e0e0e0;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    input[type="text"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #4ecca3;
+    }
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #16213e;
+      color: #e0e0e0;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    select:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 24px;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #3dbb94;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #4ecca3;
+      min-height: 20px;
+    }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    .toggle-row label {
+      margin-top: 0;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #333;
+      border-radius: 24px;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #e0e0e0;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #4ecca3;
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(20px);
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid #333;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fluent</h1>
+  <p class="subtitle">AI-powered grammar, translation & explanation for any website</p>
+
+  <label for="apiKey">Gemini API Key</label>
+  <input type="text" id="apiKey" placeholder="Enter your Gemini API key">
+
+  <hr class="section-divider">
+
+  <div class="toggle-row">
+    <label for="textImprovementEnabled">Text Improvement</label>
+    <div class="toggle-switch">
+      <input type="checkbox" id="textImprovementEnabled" checked>
+      <span class="toggle-slider"></span>
+    </div>
+  </div>
+
+  <label for="tone">Writing Tone</label>
+  <select id="tone">
+    <option value="casual">Casual — Everyday chat, Slack, Discord</option>
+    <option value="professional">Professional — Emails, meetings, managers</option>
+    <option value="executive">Executive — Senior-level, strategic communication</option>
+  </select>
+
+  <label for="language">Writing Language</label>
+  <select id="language">
+    <option value="English">English</option>
+    <option value="Portuguese">Português</option>
+    <option value="Spanish">Español</option>
+    <option value="French">Français</option>
+    <option value="German">Deutsch</option>
+    <option value="Italian">Italiano</option>
+    <option value="Dutch">Nederlands</option>
+    <option value="Polish">Polski</option>
+    <option value="Russian">Русский</option>
+    <option value="Japanese">日本語</option>
+    <option value="Korean">한국어</option>
+    <option value="Chinese">中文</option>
+  </select>
+
+  <hr class="section-divider">
+
+  <div class="toggle-row">
+    <label for="fluentifyEnabled">Fluentify Button</label>
+    <div class="toggle-switch">
+      <input type="checkbox" id="fluentifyEnabled" checked>
+      <span class="toggle-slider"></span>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="toggle-row">
+    <label for="explainEnabled">Explain (translate selection)</label>
+    <div class="toggle-switch">
+      <input type="checkbox" id="explainEnabled" checked>
+      <span class="toggle-slider"></span>
+    </div>
+  </div>
+
+  <label for="nativeLanguage">Native Language</label>
+  <select id="nativeLanguage">
+    <option value="Portuguese">Português</option>
+    <option value="English">English</option>
+    <option value="Spanish">Español</option>
+    <option value="French">Français</option>
+    <option value="German">Deutsch</option>
+    <option value="Italian">Italiano</option>
+    <option value="Dutch">Nederlands</option>
+    <option value="Polish">Polski</option>
+    <option value="Russian">Русский</option>
+    <option value="Japanese">日本語</option>
+    <option value="Korean">한국어</option>
+    <option value="Chinese">中文</option>
+  </select>
+
+  <hr class="section-divider">
+
+  <button id="save">Save</button>
+  <div class="status" id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

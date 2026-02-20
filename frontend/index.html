@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GrammarMVP — English Grammar Checker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --border:   #2a2d3e;
+      --accent:   #6c63ff;
+      --accent2:  #a78bfa;
+      --green:    #34d399;
+      --red:      #f87171;
+      --yellow:   #fbbf24;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: grid; place-items: center;
+      font-size: 18px; font-weight: 900; color: #fff;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header span { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .status-dot {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--yellow);
+      animation: pulse 2s infinite;
+    }
+    .dot.online { background: var(--green); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Layout ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 0;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      gap: 20px;
+    }
+
+    /* ── Editor panel ── */
+    .editor-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    .tone-bar {
+      display: flex; gap: 8px;
+    }
+    .tone-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .tone-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tone-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+    .editor-wrapper {
+      position: relative;
+      flex: 1;
+    }
+    #highlight-layer {
+      position: absolute; inset: 0;
+      padding: 16px;
+      font-size: 1rem;
+      line-height: 1.7;
+      color: transparent;
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow: hidden;
+      border-radius: var(--radius);
+    }
+    #editor {
+      position: relative;
+      width: 100%;
+      min-height: 260px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 1rem;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+      z-index: 1;
+    }
+    #editor:focus { border-color: var(--accent); }
+    #editor::placeholder { color: var(--muted); }
+
+    .actions {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #5a52d5; }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+    .btn-green {
+      background: rgba(52,211,153,.15);
+      border: 1px solid var(--green);
+      color: var(--green);
+    }
+    .btn-green:hover { background: rgba(52,211,153,.25); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Right panel ── */
+    .results-panel {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .card-header .badge {
+      margin-left: auto;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(248,113,113,.15);
+      color: var(--red);
+      font-size: 0.75rem;
+    }
+    .card-header .badge.ok {
+      background: rgba(52,211,153,.15);
+      color: var(--green);
+    }
+    .card-body { padding: 16px; }
+
+    /* Error list */
+    .error-list { display: flex; flex-direction: column; gap: 10px; }
+    .error-item {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(248,113,113,.05);
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .error-item:hover { border-color: var(--red); }
+    .error-item .error-msg { font-size: 0.85rem; color: var(--text); margin-bottom: 6px; }
+    .error-item .error-ctx {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: monospace;
+      margin-bottom: 8px;
+    }
+    .error-item .suggestions {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .suggestion-chip {
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(108,99,255,.15);
+      border: 1px solid var(--accent);
+      color: var(--accent2);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .suggestion-chip:hover { background: var(--accent); color: #fff; }
+    .dict-btn {
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(251,191,36,.1);
+      border: 1px solid var(--yellow);
+      color: var(--yellow);
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .dict-btn:hover { background: rgba(251,191,36,.25); }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .empty-state .icon { font-size: 2rem; margin-bottom: 8px; }
+
+    /* Rewrite output */
+    #rewrite-output {
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+      min-height: 60px;
+    }
+    #rewrite-output.placeholder { color: var(--muted); font-style: italic; }
+    #rewrite-output.loading { color: var(--muted); font-style: italic; }
+    #rewrite-output.has-result {
+      background: linear-gradient(135deg, rgba(52,211,153,.12), rgba(52,211,153,.05));
+      border: 1px solid rgba(52,211,153,.35);
+      border-radius: 10px;
+      padding: 16px;
+      color: #6ee7b7;
+      font-weight: 500;
+      box-shadow: 0 0 24px rgba(52,211,153,.08);
+    }
+
+    /* Explain output */
+    #explain-output {
+      font-size: 0.88rem;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+    #explain-output.loading { color: var(--muted); font-style: italic; }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex; gap: 16px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .stat { text-align: center; flex: 1; }
+    .stat .val { font-size: 1.4rem; font-weight: 700; }
+    .stat .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: var(--green);
+      color: #000;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transform: translateY(60px);
+      opacity: 0;
+      transition: all .3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 768px) {
+      main { grid-template-columns: 1fr; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">G</div>
+  <div>
+    <h1>GrammarMVP</h1>
+    <span>English Grammar Checker — 100% Local</span>
+  </div>
+  <div class="status-dot">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-label">Checking...</span>
+  </div>
+</header>
+
+<main>
+  <!-- Left Panel: Editor -->
+  <div class="editor-panel">
+
+    <div class="tone-bar">
+      <span style="font-size:.8rem;color:var(--muted);align-self:center;margin-right:4px">Tone:</span>
+      <button class="tone-btn active" data-tone="professional">💼 Professional</button>
+      <button class="tone-btn" data-tone="academic">🎓 Academic</button>
+      <button class="tone-btn" data-tone="informal">😊 Informal</button>
+    </div>
+
+    <div class="editor-wrapper">
+      <textarea
+        id="editor"
+        placeholder="Type or paste your text here in English...
+
+Example: 'The students arrived late at school today, but nobody was angry at them.'
+
+✓ Click 'Check Errors' to detect grammar mistakes
+✓ Click 'Improve' to rewrite with AI
+✓ Click 'Explain' to understand the errors"
+        spellcheck="false"
+      ></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-check">
+        <div class="spinner" id="sp-check"></div>
+        <span>🔍 Check Errors</span>
+      </button>
+      <button class="btn btn-green" id="btn-rewrite">
+        <div class="spinner" id="sp-rewrite"></div>
+        <span>✨ Improve with AI</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-explain">
+        <div class="spinner" id="sp-explain"></div>
+        <span>💡 Explain Errors</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-undo" disabled title="Undo">
+        ↩️ Undo
+      </button>
+      <button class="btn btn-secondary" id="btn-redo" disabled title="Redo">
+        ↪️ Redo
+      </button>
+      <button class="btn btn-secondary" id="btn-clear" style="margin-left:auto">
+        🗑️ Clear
+      </button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="val" id="stat-words">0</div>
+        <div class="lbl">Words</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="stat-chars">0</div>
+        <div class="lbl">Characters</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="stat-errors" style="color:var(--red)">—</div>
+        <div class="lbl">Errors</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="stat-sentences">0</div>
+        <div class="lbl">Sentences</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Panel: Results -->
+  <div class="results-panel">
+
+    <!-- Errors -->
+    <div class="card">
+      <div class="card-header">
+        🔴 Errors Found
+        <span class="badge" id="errors-badge">—</span>
+      </div>
+      <div class="card-body">
+        <div class="error-list" id="error-list">
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            Type some text and click<br><strong>Check Errors</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rewrite -->
+    <div class="card">
+      <div class="card-header">
+        ✨ Improved Text
+        <button class="btn btn-green" id="btn-use" style="padding:4px 10px;font-size:.75rem;margin-left:auto">
+          ✅ Use This
+        </button>
+        <button class="btn btn-secondary" id="btn-copy" style="padding:4px 10px;font-size:.75rem">
+          📋 Copy
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="rewrite-output" class="placeholder">
+          Click "Improve with AI" to rewrite your text...
+        </div>
+      </div>
+    </div>
+
+    <!-- Explanation -->
+    <div class="card">
+      <div class="card-header">💡 Error Explanation</div>
+      <div class="card-body">
+        <div id="explain-output" style="color:var(--muted);font-style:italic">
+          Click "Explain Errors" to understand the issues in your text...
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = 'http://localhost:8000';
+  let currentTone = 'professional';
+  let currentMatches = [];
+
+  // ── Status check ──
+  async function checkStatus() {
+    try {
+      const r = await fetch(`${API}/`, { signal: AbortSignal.timeout(2000) });
+      if (r.ok) {
+        document.getElementById('status-dot').classList.add('online');
+        document.getElementById('status-label').textContent = 'Backend online';
+      }
+    } catch {
+      document.getElementById('status-label').textContent = 'Backend offline';
+    }
+  }
+  checkStatus();
+  setInterval(checkStatus, 5000);
+
+  // ── Stats ──
+  const editor = document.getElementById('editor');
+  editor.addEventListener('input', updateStats);
+
+  function updateStats() {
+    const text = editor.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    const chars = editor.value.length;
+    const sentences = text ? text.split(/[.!?]+/).filter(s => s.trim()).length : 0;
+    document.getElementById('stat-words').textContent = words;
+    document.getElementById('stat-chars').textContent = chars;
+    document.getElementById('stat-sentences').textContent = sentences;
+  }
+
+  // ── Undo / Redo ──
+  const undoStack = [];
+  const redoStack = [];
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+
+  function saveSnapshot() {
+    const current = editor.value;
+    if (undoStack.length === 0 || undoStack[undoStack.length - 1] !== current) {
+      undoStack.push(current);
+      redoStack.length = 0;
+    }
+    updateUndoRedoButtons();
+  }
+
+  function updateUndoRedoButtons() {
+    btnUndo.disabled = undoStack.length <= 1;
+    btnRedo.disabled = redoStack.length === 0;
+  }
+
+  btnUndo.addEventListener('click', () => {
+    if (undoStack.length <= 1) return;
+    redoStack.push(undoStack.pop());
+    editor.value = undoStack[undoStack.length - 1];
+    updateStats();
+    updateUndoRedoButtons();
+    toast('↩️ Undone');
+  });
+
+  btnRedo.addEventListener('click', () => {
+    if (redoStack.length === 0) return;
+    const state = redoStack.pop();
+    undoStack.push(state);
+    editor.value = state;
+    updateStats();
+    updateUndoRedoButtons();
+    toast('↪️ Redone');
+  });
+
+  // Save initial state
+  saveSnapshot();
+
+  // ── Tone buttons ──
+  document.querySelectorAll('.tone-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTone = btn.dataset.tone;
+    });
+  });
+
+  // ── Spinner helpers ──
+  function startSpin(id) {
+    document.getElementById(id).style.display = 'block';
+  }
+  function stopSpin(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  // ── Toast ──
+  function toast(msg, duration = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  // ── CHECK GRAMMAR ──
+  document.getElementById('btn-check').addEventListener('click', async () => {
+    const text = editor.value.trim();
+    if (!text) { toast('⚠️ Please type some text first'); return; }
+
+    startSpin('sp-check');
+    document.getElementById('btn-check').disabled = true;
+
+    try {
+      const r = await fetch(`${API}/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await r.json();
+      currentMatches = data.matches || [];
+      renderErrors(currentMatches);
+
+      const badge = document.getElementById('errors-badge');
+      const statErrors = document.getElementById('stat-errors');
+      if (currentMatches.length === 0) {
+        badge.textContent = '✓ None';
+        badge.className = 'badge ok';
+        statErrors.textContent = '0';
+        statErrors.style.color = 'var(--green)';
+      } else {
+        badge.textContent = currentMatches.length;
+        badge.className = 'badge';
+        statErrors.textContent = currentMatches.length;
+        statErrors.style.color = 'var(--red)';
+      }
+    } catch (e) {
+      toast('❌ Failed to connect to backend. Is it running?');
+    } finally {
+      stopSpin('sp-check');
+      document.getElementById('btn-check').disabled = false;
+    }
+  });
+
+  function renderErrors(matches) {
+    const list = document.getElementById('error-list');
+    if (matches.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">✅</div>
+          <strong>No errors found!</strong><br>
+          Your text looks great.
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = matches.map((m, i) => `
+      <div class="error-item" data-index="${i}">
+        <div class="error-msg">⚠️ ${m.message}</div>
+        <div class="error-ctx">"...${m.context}..."</div>
+        <div class="suggestions">
+          ${m.replacements.map(r => `
+            <span class="suggestion-chip" data-offset="${m.offset}" data-length="${m.length}" data-replace="${r}">
+              ${r}
+            </span>`).join('')}
+          ${m.word ? `<span class="dict-btn" data-word="${m.word}">📖 Add "${m.word}" to Dictionary</span>` : ''}
+        </div>
+      </div>`).join('');
+
+    // Click on suggestion → apply correction
+    list.querySelectorAll('.suggestion-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        saveSnapshot();
+        const offset = parseInt(chip.dataset.offset);
+        const length = parseInt(chip.dataset.length);
+        const replacement = chip.dataset.replace;
+        const text = editor.value;
+        editor.value = text.slice(0, offset) + replacement + text.slice(offset + length);
+        updateStats();
+        saveSnapshot();
+        toast(`✅ Fixed to "${replacement}"`);
+      });
+    });
+
+    // Click on "Add to Dictionary"
+    list.querySelectorAll('.dict-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const word = btn.dataset.word;
+        try {
+          await fetch(`${API}/dictionary`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ word }),
+          });
+          // Remove this error item from the list
+          const item = btn.closest('.error-item');
+          item.remove();
+          // Update counts
+          const remaining = list.querySelectorAll('.error-item').length;
+          const badge = document.getElementById('errors-badge');
+          const statErrors = document.getElementById('stat-errors');
+          if (remaining === 0) {
+            badge.textContent = '✓ None';
+            badge.className = 'badge ok';
+            statErrors.textContent = '0';
+            statErrors.style.color = 'var(--green)';
+            list.innerHTML = `<div class="empty-state"><div class="icon">✅</div><strong>No errors found!</strong><br>Your text looks great.</div>`;
+          } else {
+            badge.textContent = remaining;
+            statErrors.textContent = remaining;
+          }
+          toast(`📖 "${word}" added to dictionary`);
+        } catch (e) {
+          toast('❌ Failed to add word to dictionary');
+        }
+      });
+    });
+  }
+
+  // ── REWRITE ──
+  document.getElementById('btn-rewrite').addEventListener('click', async () => {
+    const text = editor.value.trim();
+    if (!text) { toast('⚠️ Please type some text first'); return; }
+
+    const output = document.getElementById('rewrite-output');
+    output.textContent = '⏳ Please wait, AI is rewriting your text...';
+    output.className = 'loading';
+    startSpin('sp-rewrite');
+    document.getElementById('btn-rewrite').disabled = true;
+
+    try {
+      const r = await fetch(`${API}/rewrite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, tone: currentTone }),
+      });
+      const data = await r.json();
+      output.textContent = data.rewritten || 'No response from AI.';
+      output.className = 'has-result';
+    } catch (e) {
+      output.textContent = '❌ Failed to connect to the backend. Is it running?';
+      output.className = '';
+    } finally {
+      stopSpin('sp-rewrite');
+      document.getElementById('btn-rewrite').disabled = false;
+    }
+  });
+
+  // ── EXPLAIN ──
+  document.getElementById('btn-explain').addEventListener('click', async () => {
+    const text = editor.value.trim();
+    if (!text) { toast('⚠️ Please type some text first'); return; }
+
+    const output = document.getElementById('explain-output');
+    output.textContent = '⏳ Analyzing errors...';
+    output.className = 'loading';
+    startSpin('sp-explain');
+    document.getElementById('btn-explain').disabled = true;
+
+    try {
+      const r = await fetch(`${API}/explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      const data = await r.json();
+      output.textContent = data.explanation || 'No response from AI.';
+      output.className = '';
+    } catch (e) {
+      output.textContent = '❌ Failed to connect to the backend.';
+      output.className = '';
+    } finally {
+      stopSpin('sp-explain');
+      document.getElementById('btn-explain').disabled = false;
+    }
+  });
+
+  // ── USE THIS (replace editor with rewritten text) ──
+  document.getElementById('btn-use').addEventListener('click', () => {
+    const text = document.getElementById('rewrite-output').textContent;
+    if (!text || text.startsWith('Click') || text.startsWith('⏳')) { toast('⚠️ No improved text yet'); return; }
+    saveSnapshot();
+    editor.value = text;
+    updateStats();
+    saveSnapshot();
+    toast('✅ Text replaced with improved version');
+  });
+
+  // ── COPY ──
+  document.getElementById('btn-copy').addEventListener('click', () => {
+    const text = document.getElementById('rewrite-output').textContent;
+    if (!text || text.startsWith('Click')) { toast('⚠️ Nothing to copy'); return; }
+    navigator.clipboard.writeText(text).then(() => toast('📋 Copied to clipboard!'));
+  });
+
+  // ── CLEAR ──
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    saveSnapshot();
+    editor.value = '';
+    currentMatches = [];
+    document.getElementById('error-list').innerHTML = `
+      <div class="empty-state"><div class="icon">📝</div>Type some text and click<br><strong>Check Errors</strong></div>`;
+    document.getElementById('rewrite-output').textContent = 'Click "Improve with AI" to rewrite your text...';
+    document.getElementById('rewrite-output').className = 'placeholder';
+    document.getElementById('explain-output').textContent = 'Click "Explain Errors" to understand the issues in your text...';
+    document.getElementById('explain-output').style = 'color:var(--muted);font-style:italic';
+    document.getElementById('errors-badge').textContent = '—';
+    document.getElementById('errors-badge').className = 'badge';
+    document.getElementById('stat-errors').textContent = '—';
+    document.getElementById('stat-errors').style.color = 'var(--red)';
+    updateStats();
+    saveSnapshot();
+  });
+</script>
+</body>
+</html>

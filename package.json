@@ -1,0 +1,17 @@
+{
+  "name": "fluent",
+  "version": "1.0.0",
+  "description": "**Corretor de Português Brasileiro — LanguageTool local + Gemini Flash API**",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jsdom": "^28.1.0",
+    "vitest": "^4.0.18"
+  }
+}
