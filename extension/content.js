@@ -122,7 +122,9 @@
 
     tooltip.querySelector('.fluent-text').textContent = improved;
 
-    tooltip.querySelector('.fluent-btn-apply').addEventListener('click', () => {
+    tooltip.querySelector('.fluent-btn-apply').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       lastCheckedText = improved.trim();
       suppressUntil = Date.now() + 3000;
       applyText(inputEl, improved);
@@ -131,7 +133,9 @@
 
     const copyBtn = tooltip.querySelector('.fluent-btn-copy');
     if (copyBtn) {
-      copyBtn.addEventListener('click', () => {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
         navigator.clipboard.writeText(improved).then(() => {
           copyBtn.textContent = 'Copied!';
           setTimeout(removeTooltip, 800);
@@ -139,7 +143,9 @@
       });
     }
 
-    tooltip.querySelector('.fluent-btn-dismiss').addEventListener('click', () => {
+    tooltip.querySelector('.fluent-btn-dismiss').addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       removeTooltip();
     });
 
@@ -544,7 +550,9 @@
     bubble.style.top = `${top}px`;
     bubble.style.left = `${left}px`;
 
-    bubble.addEventListener('click', () => {
+    bubble.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       requestExplanation(selectedText, rect);
     });
 
