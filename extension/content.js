@@ -26,7 +26,10 @@
       const disabledFeatures = data.disabledFeatures || {};
       disabledFeaturesForSite = disabledFeatures[currentHostname] || [];
 
-      if (disabledFeaturesForSite.includes('textImprovement') && activeTooltip) { removeTooltip(); }
+      if (disabledFeaturesForSite.includes('textImprovement')) {
+        removeTooltip();
+        removeAllCheckIcons();
+      }
       if (disabledFeaturesForSite.includes('explain')) { removeExplain(); }
     });
   }
@@ -44,7 +47,10 @@
     if (changes.disabledFeatures) {
       const disabledFeatures = changes.disabledFeatures.newValue || {};
       disabledFeaturesForSite = disabledFeatures[currentHostname] || [];
-      if (disabledFeaturesForSite.includes('textImprovement')) { removeTooltip(); removeCheckIcon(); }
+      if (disabledFeaturesForSite.includes('textImprovement')) {
+        removeTooltip();
+        removeAllCheckIcons();
+      }
       if (disabledFeaturesForSite.includes('explain')) { removeExplain(); }
     }
   });
@@ -420,10 +426,14 @@
   }
 
   function removeCheckIcon(el) {
-    if (el._fluentCheckIcon) {
-      el._fluentCheckIcon.remove();
-      el._fluentCheckIcon = null;
-    }
+    if (!el || !el._fluentCheckIcon) return;
+    el._fluentCheckIcon.remove();
+    el._fluentCheckIcon = null;
+  }
+
+  function removeAllCheckIcons() {
+    // Remove all check icons from the page
+    document.querySelectorAll('.fluent-action-btn').forEach(icon => icon.remove());
   }
 
   function updateCheckIcon(inputEl) {
